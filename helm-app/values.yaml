@@ -28,7 +28,8 @@ prometheus:
       - name: prometheus-config
         mountPath: /etc/prometheus/prometheus.yml
         subPath: prometheus.yml
-
+        
+# Grafana configuration
 grafana:
   enabled: true
   adminPassword: "admin"
@@ -73,7 +74,7 @@ nginx:
   deployment:
     containers:
       - name: nginx
-        image: boti95/linux_tweet_app:2.0  # Ensure the correct image
+        image: boti95/linux_tweet_app:2.0
         ports:
           - containerPort: 80
       - name: nginx-exporter
@@ -92,7 +93,7 @@ nginx:
   volumes:
     - name: nginx-config-volume
       configMap:
-        name: nginx-config  # Use the ConfigMap with the Nginx config
+        name: nginx-config
 
 # Prometheus ServiceMonitor for Nginx exporter
 serviceMonitors:

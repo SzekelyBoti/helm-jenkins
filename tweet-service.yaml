@@ -8,12 +8,12 @@ spec:
   ports:
   - name: http
     protocol: TCP
-    port: 80  # Expose HTTP on port 80
-    targetPort: 80  # Map it to the container's port 80
+    port: 80
+    targetPort: 80
   - name: https
     protocol: TCP
-    port: 443  # Expose HTTPS on port 443 (if needed)
-    targetPort: 443  # Map it to the container's port 443
+    port: 443
+    targetPort: 443
   - name: metrics
     protocol: TCP
     port: 9113
