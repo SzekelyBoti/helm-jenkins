@@ -26,6 +26,10 @@
             steps {
                 script {
                     sh '''
+                    # Deploy Prometheus and Grafana
+                    helm upgrade --install monitoring ./helm-app- -f ./helm-app-/values.yaml --namespace monitoring --create-namespace
+        
+                    # Deploy Tweet App
                     helm upgrade --install tweet-app ./helm-app-/tweet-app -f ./helm-app-/tweet-app/values.yaml --namespace default --create-namespace
                     '''
                 }
