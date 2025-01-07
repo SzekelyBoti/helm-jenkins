@@ -16,7 +16,7 @@
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig-id', variable: 'KUBECONFIG_FILE')]) {
                     script {
-                        sh 'export KUBECONFIG=$KUBECONFIG_FILE'
+                        env.KUBECONFIG = KUBECONFIG_FILE
                     }
                 }
             }
