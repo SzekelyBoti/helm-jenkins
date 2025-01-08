@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            root /usr/share/nginx/html;  # Default location for static files in Nginx
+            index index.html;  # Ensure this matches your app's entry point
+        }
+
+        location /status {
+            stub_status on;
+            access_log off;
+            error_log off;
+        }
+    }
+

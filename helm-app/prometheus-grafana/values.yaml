@@ -1,10 +1,10 @@
-# values.yaml
-
 # Prometheus configuration
 prometheus:
   prometheusSpec:
     replicas: 1
-    serviceMonitorSelectorNilUsesHelmValues: false
+    image:
+      tag: "2.44.0"
+    serviceMonitorSelectorNilUsesHelmValues: flase
     serviceMonitorSelector: {}
     additionalScrapeConfigs:
       name: prometheus-config
@@ -16,7 +16,6 @@ prometheus:
       limits:
         memory: "512Mi"
         cpu: "500m"
-    # Enable NodePort service for Prometheus UI (optional)
     service:
       type: NodePort
       ports:
@@ -24,17 +23,12 @@ prometheus:
           port: 9090
           targetPort: 9090
           nodePort: 30990
-    volumeMounts:
-      - name: prometheus-config
-        mountPath: /etc/prometheus/prometheus.yml
-        subPath: prometheus.yml
         
 # Grafana configuration
 grafana:
   enabled: true
   adminPassword: "admin"
   service:
-    type: NodePort
     ports:
       - name: http
         port: 80
@@ -47,14 +41,6 @@ grafana:
     limits:
       memory: "512Mi"
       cpu: "500m"
-  configData: {}
-
-prometheus:
-  prometheusSpec:
-    additionalScrapeConfigs:
-      - job_name: 'nginx'
-        static_configs:
-          - targets: ['nginx-service.default.svc.cluster.local:9113']
 
 # Nginx configuration
 nginx:
@@ -90,19 +76,15 @@ nginx:
           limits:
             memory: "200Mi"
             cpu: "200m"
-  volumes:
-    - name: nginx-config-volume
-      configMap:
-        name: nginx-config
-
-# Prometheus ServiceMonitor for Nginx exporter
-serviceMonitors:
-  - name: "nginx"
-    namespaceSelector: {}
-    selector:
-      matchLabels:
-        app: nginx
-    endpoints:
-      - port: metrics
-        path: /metrics
-        interval: 30s
+            
+## Prometheus ServiceMonitor for Nginx exporter
+#serviceMonitors:
+#  - name: "nginx"
+#    namespaceSelector: {}
+#    selector:
+#      matchLabels:
+#        app: nginx
+#    endpoints:
+#      - port: metrics
+#        path: /metrics
+#        interval: 30s
