@@ -1,0 +1,15 @@
+﻿apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-prometheus
+  labels:
+    app: prometheus
+spec:
+  type: {{ .Values.prometheus.service.type | default "ClusterIP" }}
+  ports:
+    - name: web
+      port: {{ .Values.prometheus.service.ports[0].port | default 9090 }}
+      targetPort: 9090
+      nodePort: {{ .Values.prometheus.service.ports[0].nodePort | default 30990 }}
+  selector:
+    app: prometheus
