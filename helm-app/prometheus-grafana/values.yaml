@@ -17,7 +17,7 @@ prometheus:
         memory: "512Mi"
         cpu: "500m"
     service:
-      type: NodePort
+      type: ClusterIp
       ports:
         - name: web
           port: 9090
@@ -29,6 +29,7 @@ grafana:
   enabled: true
   adminPassword: "admin"
   service:
+    type: ClusterIp
     ports:
       - name: http
         port: 80
@@ -47,7 +48,7 @@ nginx:
   enabled: true
   replicaCount: 1
   service:
-    type: NodePort
+    type: ClusterIp
     ports:
       - name: http
         port: 80
