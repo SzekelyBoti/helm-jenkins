@@ -1,9 +1,9 @@
 ﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-prometheus
+  name: prometheus
 spec:
-  replicas: {{ .Values.grafana.replicas | default 1 }}
+  replicas: 1
   selector:
     matchLabels:
       app: prometheus
@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: prometheus
-        image: prom/prometheus:{{ .Values.prometheus.image.tag | default "v2.44.0" }}
+        image: prom/prometheus:v2.44.0
         ports:
         - containerPort: 9090
         volumeMounts:

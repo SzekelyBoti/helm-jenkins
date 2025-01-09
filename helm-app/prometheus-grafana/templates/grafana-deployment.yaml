@@ -1,11 +1,11 @@
 ﻿apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-grafana
+  name: grafana
   labels:
     app: grafana
 spec:
-  replicas: {{ .Values.grafana.replicas | default 1 }}
+  replicas: 1
   selector:
     matchLabels:
       app: grafana
@@ -16,16 +16,16 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: grafana/grafana:{{ .Values.grafana.image.tag | default "latest" }}
+        image: grafana/grafana:latest
         ports:
         - containerPort: 3000
         env:
         - name: GF_SECURITY_ADMIN_PASSWORD
-          value: {{ .Values.grafana.adminPassword | "admin" }}
+          value: "admin"
         resources:
           requests:
-            memory: {{ .Values.grafana.resources.requests.memory | default "256Mi" }}
-            cpu: {{ .Values.grafana.resources.requests.cpu | default "250m" }}
+            memory: "256Mi"
+            cpu: "250m"
           limits:
-            memory: {{ .Values.grafana.resources.limits.memory | default "512Mi" }}
-            cpu: {{ .Values.grafana.resources.limits.cpu | default "500m" }}
+            memory: "512Mi"
+            cpu: "500m"
