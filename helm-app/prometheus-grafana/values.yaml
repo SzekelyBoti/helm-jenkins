@@ -78,14 +78,14 @@ nginx:
             memory: "200Mi"
             cpu: "200m"
             
-## Prometheus ServiceMonitor for Nginx exporter
-#serviceMonitors:
-#  - name: "nginx"
-#    namespaceSelector: {}
-#    selector:
-#      matchLabels:
-#        app: nginx
-#    endpoints:
-#      - port: metrics
-#        path: /metrics
-#        interval: 30s
+# Prometheus ServiceMonitor for Nginx exporter
+serviceMonitors:
+  - name: "nginx"
+    namespaceSelector: {}
+    selector:
+      matchLabels:
+        app: nginx
+    endpoints:
+      - port: metrics
+        path: /metrics
+        interval: 30s
