@@ -8,12 +8,12 @@ spec:
   type: {{ .Values.nginx.service.type | default "ClusterIP" }}
   ports:
     - name: http
-      port: {{ .Values.nginx.service.ports[0].port | default 80 }}
+      port:  80
       targetPort: 80
-      nodePort: {{ .Values.nginx.service.ports[0].nodePort | default 32377 }}
+      nodePort: 32377
     - name: metrics
-      port: {{ .Values.nginx.service.ports[1].port | default 9113 }}
+      port: 9113
       targetPort: 9113
-      nodePort: {{ .Values.nginx.service.ports[1].nodePort | default 32378 }}
+      nodePort: 32378
   selector:
     app: nginx
