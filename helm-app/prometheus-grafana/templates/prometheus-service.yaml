@@ -8,8 +8,8 @@ spec:
   type: {{ .Values.prometheus.service.type | default "ClusterIP" }}
   ports:
     - name: web
-      port: {{ .Values.prometheus.service.ports[0].port | default 9090 }}
+      port: 9090
       targetPort: 9090
-      nodePort: {{ .Values.prometheus.service.ports[0].nodePort | default 30990 }}
+      nodePort: 30990
   selector:
     app: prometheus
