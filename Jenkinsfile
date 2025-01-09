@@ -27,7 +27,7 @@ pipeline {
                 script {
                     sh '''
                     # Deploy Prometheus and Grafana
-                    helm upgrade --install monitoring ./helm-app -f ./helm-app/prometheus-grafana/values.yaml --namespace monitoring --create-namespace
+                    helm upgrade --install monitoring ./helm-app/prometheus-grafana -f ./helm-app/prometheus-grafana/values.yaml --namespace monitoring --create-namespace
         
                     # Deploy Tweet App
                     helm upgrade --install tweet-app ./helm-app/tweet-app -f ./helm-app/tweet-app/values.yaml --namespace default --create-namespace
