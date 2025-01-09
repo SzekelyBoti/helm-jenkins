@@ -4,7 +4,7 @@ prometheus:
     replicas: 1
     image:
       tag: "2.44.0"
-    serviceMonitorSelectorNilUsesHelmValues: flase
+    serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorSelector: {}
     additionalScrapeConfigs:
       name: prometheus-config
