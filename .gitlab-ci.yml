@@ -1,4 +1,5 @@
-﻿stages:
+﻿
+stages:
   - deploy
   - verify
 
