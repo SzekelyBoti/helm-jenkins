@@ -1,0 +1,33 @@
+﻿stages:
+  - deploy
+  - verify
+
+variables:
+  KUBECONFIG_PATH: "/tmp/kubeconfig"
+
+before_script:
+  # Decode kubeconfig and set the KUBECONFIG environment variable
+  - echo "$KUBECONFIG" | base64 -d > $KUBECONFIG_PATH
+  - export KUBECONFIG=$KUBECONFIG_PATH
+
+deploy:
+  stage: deploy
+  image: alpine/helm:3.12.0
+  script:
+    # Deploy Prometheus and Grafana
+    - helm upgrade --install monitoring ./helm-app/prometheus-grafana -f ./helm-app/prometheus-grafana/values.yaml --namespace monitoring --create-namespace
+    
+    # Deploy Tweet App
+    - helm upgrade --install tweet-app ./helm-app/tweet-app -f ./helm-app/tweet-app/values.yaml --namespace default --create-namespace
+  only:
+    - main
+
+verify:
+  stage: verify
+  image: bitnami/kubectl:latest
+  script:
+    # Verify deployments
+    - kubectl get pods -n default
+    - kubectl get pods -n monitoring
+  only:
+    - main
