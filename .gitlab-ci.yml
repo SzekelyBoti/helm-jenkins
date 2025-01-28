@@ -4,12 +4,32 @@ stages:
   - verify
 
 variables:
-  KUBECONFIG_PATH: "/tmp/kubeconfig"
+  KUBECONFIG: /root/.kube/config
 
 before_script:
-  # Decode kubeconfig and set the KUBECONFIG environment variable
-  - echo "$KUBECONFIG" | base64 -d > $KUBECONFIG_PATH
-  - export KUBECONFIG=$KUBECONFIG_PATH
+  - echo "Checking Kubernetes config:"
+  - ls -la /home/ubuntu/.kube/
+  - cat /home/ubuntu/.kube/config
+  - export KUBECONFIG=/root/.kube/config
+  - echo "Using KUBECONFIG:$KUBECONFIG"
+  - apk add --no-cache curl
+  - curl -LO "https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl"
+  - chmod +x ./kubectl
+  - mv ./kubectl /usr/local/bin/
+  
+  - mkdir -p /root/.kube
+  
+  - cp /home/ubuntu/.kube/config /root/.kube/config
+  - cp /home/ubuntu/.minikube/profiles/minikube/client.crt /root/.kube/client.crt
+  - cp /home/ubuntu/.minikube/profiles/minikube/client.key /root/.kube/client.key
+  - cp /home/ubuntu/.minikube/ca.crt /root/.kube/ca.crt
+  
+  - kubectl config set-cluster minikube --server=https://192.168.49.2:8443
+  - kubectl config set-context minikube --cluster=minikube --user=minikube --namespace=default
+  - kubectl config use-context minikube
+  
+  - kubectl config view
+  - kubectl get nodes
 
 deploy:
   stage: deploy
@@ -17,20 +37,7 @@ deploy:
     name: alpine/helm:latest
     entrypoint: [""]
   script:
-    # Deploy Prometheus and Grafana
     - helm upgrade --install monitoring ./helm-app/prometheus-grafana -f ./helm-app/prometheus-grafana/values.yaml --namespace monitoring --create-namespace
-    
-    # Deploy Tweet App
     - helm upgrade --install tweet-app ./helm-app/tweet-app -f ./helm-app/tweet-app/values.yaml --namespace default --create-namespace
-  only:
-    - main
-
-verify:
-  stage: verify
-  image: bitnami/kubectl:latest
-  script:
-    # Verify deployments
-    - kubectl get pods -n default
-    - kubectl get pods -n monitoring
   only:
     - main
