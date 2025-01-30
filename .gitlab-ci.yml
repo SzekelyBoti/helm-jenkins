@@ -1,7 +1,6 @@
 ﻿
 stages:
   - deploy
-  - verify
 
 variables:
   KUBECONFIG: /root/.kube/config
