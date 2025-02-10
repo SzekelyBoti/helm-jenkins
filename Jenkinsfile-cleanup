@@ -1,0 +1,31 @@
+﻿pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'eu-north-1'
+    }
+
+    stages {
+        stage('Destroy AWS Resources') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials-id']]) {
+                    script {
+                        sh '''
+                        cd terraform
+                        terraform destroy -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'AWS Resources cleaned up successfully!'
+        }
+        failure {
+            echo 'Cleanup failed! Please check manually.'
+        }
+    }
+}

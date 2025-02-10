@@ -10,7 +10,7 @@ data:
 
         location / {
             root /usr/share/nginx/html;  # Default location for static files in Nginx
-            index index.html;  # Ensure this matches your app's entry point
+            index index.html;
         }
 
         location /status {

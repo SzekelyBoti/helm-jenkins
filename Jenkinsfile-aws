@@ -1,0 +1,66 @@
+﻿pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'us-east-1'
+        CLUSTER_NAME = 'my-cluster'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials-id']]) {
+                    script {
+                        sh '''
+                        cd terraform
+                        terraform init
+                        terraform apply -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Configure AWS & EKS') {
+            steps {
+                script {
+                    sh 'aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME'
+                }
+            }
+        }
+
+        stage('Helm Deploy to AWS') {
+            steps {
+                script {
+                    sh '''
+                    helm upgrade --install monitoring ./helm-app/prometheus-grafana -f ./helm-app/prometheus-grafana/values.yaml --namespace monitoring --create-namespace
+                    helm upgrade --install tweet-app ./helm-app/tweet-app -f ./helm-app/tweet-app/values.yaml --namespace default --create-namespace
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    sh 'kubectl get pods -n default'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'AWS Deployment completed successfully!'
+        }
+        failure {
+            echo 'Deployment failed!'
+        }
+    }
+}
