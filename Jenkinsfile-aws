@@ -2,7 +2,7 @@
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'
+        AWS_REGION = 'eu-west-2'
         CLUSTER_NAME = 'my-cluster'
     }
 
@@ -53,6 +53,22 @@
                 }
             }
         }
+
+        stage('Cleanup (Optional)') {
+            when {
+                expression { return params.DESTROY_RESOURCES }
+            }
+            steps {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials-id']]) {
+                    script {
+                        sh '''
+                        cd terraform
+                        terraform destroy -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
     }
 
     post {
@@ -64,3 +80,4 @@
         }
     }
 }
+
