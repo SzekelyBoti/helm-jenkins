@@ -29,8 +29,13 @@
 
         stage('Configure AWS & EKS') {
             steps {
-                script {
-                    sh 'aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME'
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials-id']]) {
+                    script {
+                        sh 'aws --version'
+                        sh 'kubectl version --client'
+                        sh 'aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME'
+                        sh 'kubectl config current-context'
+                    }
                 }
             }
         }
@@ -39,8 +44,12 @@
             steps {
                 script {
                     sh '''
-                    helm upgrade --install monitoring ./helm-app/prometheus-grafana -f ./helm-app/prometheus-grafana/values.yaml --namespace monitoring --create-namespace
-                    helm upgrade --install tweet-app ./helm-app/tweet-app -f ./helm-app/tweet-app/values.yaml --namespace default --create-namespace
+                    helm upgrade --install monitoring ./helm-app/prometheus-grafana \
+                        -f ./helm-app/prometheus-grafana/values.yaml \
+                        --namespace monitoring --create-namespace
+                    helm upgrade --install tweet-app ./helm-app/tweet-app \
+                        -f ./helm-app/tweet-app/values.yaml \
+                        --namespace default --create-namespace
                     '''
                 }
             }
