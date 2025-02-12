@@ -18,6 +18,9 @@ pipeline {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials-id']]) {
                     script {
                         sh '''
+                        echo "Verifying AWS Credentials..."
+                        aws sts get-caller-identity  # Debug AWS authentication
+
                         cd terraform
                         terraform init
                         terraform apply -auto-approve
@@ -31,10 +34,17 @@ pipeline {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials-id']]) {
                     script {
-                        sh 'aws --version'
-                        sh 'kubectl version --client'
-                        sh 'aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME'
-                        sh 'kubectl config current-context'
+                        sh '''
+                        echo "Checking AWS CLI and Kubectl versions..."
+                        aws --version
+                        kubectl version --client
+
+                        echo "Configuring EKS..."
+                        export AWS_REGION=eu-west-2
+                        export CLUSTER_NAME=my-cluster
+                        aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
+                        kubectl config current-context
+                        '''
                     }
                 }
             }
