@@ -30,6 +30,11 @@ resource "aws_subnet" "eks_subnet_public_a" {
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
   availability_zone       = "eu-west-2a"
+  
+  tags = {
+      "kubernetes.io/cluster/my-cluster" = "shared"
+      "kubernetes.io/role/elb"           = "1"
+    }
 }
 
 # Public Subnet in eu-west-2b
@@ -38,6 +43,11 @@ resource "aws_subnet" "eks_subnet_public_b" {
   cidr_block              = "10.0.2.0/24"
   map_public_ip_on_launch = true
   availability_zone       = "eu-west-2b"
+  
+  tags = {
+      "kubernetes.io/cluster/my-cluster" = "shared"
+      "kubernetes.io/role/elb"           = "1"
+    }
 }
 
 # Associate Subnets with Route Table
@@ -83,17 +93,10 @@ resource "aws_security_group" "eks_sg" {
   vpc_id = aws_vpc.eks_vpc.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 0
+    to_port     = 65535
     protocol    = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    cidr_blocks = ["10.0.0.0/16"]
   }
 
   egress {
@@ -140,7 +143,8 @@ resource "aws_iam_role" "node_role" {
   name = "eks-node-role"
   managed_policy_arns = [
     "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
-    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
   ]
   assume_role_policy = <<EOF
 {
