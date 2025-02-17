@@ -24,30 +24,27 @@ resource "aws_route" "internet_access" {
   gateway_id             = aws_internet_gateway.eks_igw.id
 }
 
-# Public Subnet in eu-west-2a
+# Public Subnets
 resource "aws_subnet" "eks_subnet_public_a" {
   vpc_id                  = aws_vpc.eks_vpc.id
   cidr_block              = "10.0.1.0/24"
   map_public_ip_on_launch = true
   availability_zone       = "eu-west-2a"
-  
   tags = {
-      "kubernetes.io/cluster/my-cluster" = "shared"
-      "kubernetes.io/role/elb"           = "1"
-    }
+    "kubernetes.io/cluster/my-cluster" = "shared"
+    "kubernetes.io/role/elb"           = "1"
+  }
 }
 
-# Public Subnet in eu-west-2b
 resource "aws_subnet" "eks_subnet_public_b" {
   vpc_id                  = aws_vpc.eks_vpc.id
   cidr_block              = "10.0.2.0/24"
   map_public_ip_on_launch = true
   availability_zone       = "eu-west-2b"
-  
   tags = {
-      "kubernetes.io/cluster/my-cluster" = "shared"
-      "kubernetes.io/role/elb"           = "1"
-    }
+    "kubernetes.io/cluster/my-cluster" = "shared"
+    "kubernetes.io/role/elb"           = "1"
+  }
 }
 
 # Associate Subnets with Route Table
@@ -61,25 +58,23 @@ resource "aws_route_table_association" "public_b" {
   route_table_id = aws_route_table.eks_rt.id
 }
 
+# Security Groups
 resource "aws_security_group" "alb_sg" {
   name        = "alb-security-group"
-  description = "Security group for the Application Load Balancer"
+  description = "Security group for the ALB"
   vpc_id      = aws_vpc.eks_vpc.id
-
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -88,17 +83,14 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# Security Group
 resource "aws_security_group" "eks_sg" {
   vpc_id = aws_vpc.eks_vpc.id
-
   ingress {
     from_port   = 0
     to_port     = 65535
     protocol    = "tcp"
     cidr_blocks = ["10.0.0.0/16"]
   }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -110,23 +102,23 @@ resource "aws_security_group" "eks_sg" {
 # IAM Role for EKS Cluster
 resource "aws_iam_role" "eks_role" {
   name = "eks-cluster-role"
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  ]
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
     {
       "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "eks.amazonaws.com"
-      },
+      "Principal": { "Service": "eks.amazonaws.com" },
       "Effect": "Allow"
     }
   ]
 }
 EOF
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_role.name
 }
 
 # EKS Cluster
@@ -141,20 +133,13 @@ resource "aws_eks_cluster" "my_cluster" {
 # IAM Role for Node Group
 resource "aws_iam_role" "node_role" {
   name = "eks-node-role"
-  managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
-    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
-    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  ]
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
     {
       "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
+      "Principal": { "Service": "ec2.amazonaws.com" },
       "Effect": "Allow"
     }
   ]
@@ -162,12 +147,17 @@ resource "aws_iam_role" "node_role" {
 EOF
 }
 
-# Node Group (Worker Nodes)
+resource "aws_iam_role_policy_attachment" "eks_worker_node_policy_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.node_role.name
+}
+
+# Node Group
 resource "aws_eks_node_group" "node_group" {
-  cluster_name    = aws_eks_cluster.my_cluster.name
-  node_role_arn   = aws_iam_role.node_role.arn
-  subnet_ids      = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
-  instance_types  = ["t3.medium"]
+  cluster_name  = aws_eks_cluster.my_cluster.name
+  node_role_arn = aws_iam_role.node_role.arn
+  subnet_ids    = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
+  instance_types = ["t3.medium"]
   scaling_config {
     desired_size = 2
     max_size     = 3
@@ -175,28 +165,16 @@ resource "aws_eks_node_group" "node_group" {
   }
 }
 
-# Load Balancer for Frontend
+# Load Balancer
 resource "aws_lb" "frontend_lb" {
   name               = "frontend-lb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.eks_sg.id]
+  security_groups    = [aws_security_group.alb_sg.id]
   subnets           = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
 }
 
-# Persistent Storage for Prometheus/Grafana
-resource "aws_ebs_volume" "prometheus_storage" {
-  availability_zone = "eu-west-2a"
-  size             = 10
-  type             = "gp2"
-}
-
-resource "aws_volume_attachment" "prometheus_attach" {
-  device_name = "/dev/xvdh"
-  volume_id   = aws_ebs_volume.prometheus_storage.id
-  instance_id = aws_eks_node_group.node_group.id
-}
-
+# Outputs
 output "eks_cluster_name" {
   value = aws_eks_cluster.my_cluster.name
 }
