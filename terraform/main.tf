@@ -168,18 +168,43 @@ resource "aws_iam_role_policy_attachment" "eks_cni_policy_attach" {
   role       = aws_iam_role.node_role.name
 }
 
+resource "aws_iam_role_policy_attachment" "eks_ecr_read_only_policy_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.node_role.name
+}
+
+# Data source for the latest EKS optimized AMI in eu-west-2
+data "aws_ami" "eks_ami" {
+  most_recent = true
+  owners      = ["602401143452"]
+  filters = {
+    name = "amazon-eks-node-*-al2-x86_64-gp2"
+  }
+}
+
 # Node Group
 resource "aws_eks_node_group" "node_group" {
   cluster_name  = aws_eks_cluster.my_cluster.name
   node_role_arn = aws_iam_role.node_role.arn
   subnet_ids    = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
   instance_types = ["t3.medium"]
-  ami_type       = "AL2_x86_64"  # Ensure this uses Amazon EKS optimized AMI
+  ami_type       = "CUSTOM"
+  ami_id         = data.aws_ami.eks_ami.id
   scaling_config {
     desired_size = 2
     max_size     = 3
     min_size     = 1
   }
+}
+
+# Allow Nodes to communicate with each other
+resource "aws_security_group_rule" "allow_nodes_to_nodes" {
+  type                     = "ingress"
+  from_port                = 1025
+  to_port                  = 65535
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.eks_sg.id
+  cidr_blocks              = ["10.0.0.0/16"]
 }
 
 # Outputs
@@ -190,4 +215,5 @@ output "eks_cluster_name" {
 output "eks_kubeconfig_command" {
   value = "aws eks update-kubeconfig --region eu-west-2 --name ${aws_eks_cluster.my_cluster.name}"
 }
+
 
