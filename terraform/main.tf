@@ -141,6 +141,41 @@ resource "aws_eks_cluster" "my_cluster" {
   }
 }
 
+# IAM Role for Node Group
+resource "aws_iam_role" "node_role" {
+  name = "eks-node-role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": { "Service": "ec2.amazonaws.com" },
+      "Effect": "Allow"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_node_policy_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.node_role.name
+}
+
+# Node Group
+resource "aws_eks_node_group" "node_group" {
+  cluster_name  = aws_eks_cluster.my_cluster.name
+  node_role_arn = aws_iam_role.node_role.arn
+  subnet_ids    = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
+  instance_types = ["t3.medium"]
+  scaling_config {
+    desired_size = 2
+    max_size     = 3
+    min_size     = 1
+  }
+}
+
 # Outputs
 output "eks_cluster_name" {
   value = aws_eks_cluster.my_cluster.name
@@ -149,5 +184,4 @@ output "eks_cluster_name" {
 output "eks_kubeconfig_command" {
   value = "aws eks update-kubeconfig --region eu-west-2 --name ${aws_eks_cluster.my_cluster.name}"
 }
-
 
