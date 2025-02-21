@@ -59,6 +59,24 @@ resource "aws_route_table_association" "public_b" {
 }
 
 # Security Groups
+resource "aws_security_group" "eks_sg" {
+  name        = "eks-security-group"
+  vpc_id      = aws_vpc.eks_vpc.id
+
+  ingress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_security_group" "alb_sg" {
   name        = "alb-security-group"
   vpc_id      = aws_vpc.eks_vpc.id
@@ -83,7 +101,6 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# Security group rule to allow ALB to reach EKS nodes
 resource "aws_security_group_rule" "allow_alb_to_nodes" {
   type                     = "ingress"
   from_port                = 80
@@ -91,6 +108,15 @@ resource "aws_security_group_rule" "allow_alb_to_nodes" {
   protocol                 = "tcp"
   security_group_id        = aws_security_group.eks_sg.id
   source_security_group_id = aws_security_group.alb_sg.id
+}
+
+# EKS Cluster
+resource "aws_eks_cluster" "my_cluster" {
+  name     = "my-cluster"
+  role_arn = aws_iam_role.eks_role.arn
+  vpc_config {
+    subnet_ids = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
+  }
 }
 
 # Load Balancer
@@ -134,4 +160,5 @@ output "eks_cluster_name" {
 output "eks_kubeconfig_command" {
   value = "aws eks update-kubeconfig --region eu-west-2 --name ${aws_eks_cluster.my_cluster.name}"
 }
+
 
