@@ -62,8 +62,8 @@ resource "aws_route_table_association" "public_b" {
 
 # Security Groups
 resource "aws_security_group" "eks_sg" {
-  name        = "eks-security-group"
-  vpc_id      = aws_vpc.eks_vpc.id
+  name   = "eks-security-group"
+  vpc_id = aws_vpc.eks_vpc.id
 
   ingress {
     from_port   = 0
@@ -79,42 +79,74 @@ resource "aws_security_group" "eks_sg" {
   }
 }
 
-# Allow External Traffic to Nodes
-resource "aws_security_group_rule" "allow_http_from_anywhere" {
-  type              = "ingress"
-  from_port         = 80
-  to_port           = 80
-  protocol          = "tcp"
-  security_group_id = aws_security_group.eks_sg.id
-  cidr_blocks       = ["0.0.0.0/0"]
+# IAM Role for EKS Cluster
+resource "aws_iam_role" "eks_role" {
+  name = "eks-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = { Service = "eks.amazonaws.com" }
+      Action = "sts:AssumeRole"
+    }]
+  })
 }
 
-resource "aws_security_group_rule" "allow_https_from_anywhere" {
-  type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  security_group_id = aws_security_group.eks_sg.id
-  cidr_blocks       = ["0.0.0.0/0"]
+# Attach AWS-Managed Policies to EKS Cluster Role
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_role.name
+}
+
+# IAM Role for Node Group
+resource "aws_iam_role" "node_role" {
+  name = "eks-node-group-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+# Attach AWS-Managed Policies to Node Role
+resource "aws_iam_role_policy_attachment" "worker_node_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.node_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "cni_policy_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.node_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_policy_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  role       = aws_iam_role.node_role.name
 }
 
 # EKS Cluster
 resource "aws_eks_cluster" "my_cluster" {
   name     = "my-cluster"
   role_arn = aws_iam_role.eks_role.arn
+
   vpc_config {
     subnet_ids = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
   }
 }
 
-# Node Group (No Custom AMI)
+# Node Group
 resource "aws_eks_node_group" "node_group" {
   cluster_name  = aws_eks_cluster.my_cluster.name
   node_role_arn = aws_iam_role.node_role.arn
   subnet_ids    = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
 
   instance_types = ["t3.medium"]
-  ami_type       = "AL2_x86_64"  # AWS will select the correct AMI
+  ami_type       = "AL2_x86_64"
 
   scaling_config {
     desired_size = 2
@@ -131,5 +163,4 @@ output "eks_cluster_name" {
 output "eks_kubeconfig_command" {
   value = "aws eks update-kubeconfig --region eu-west-2 --name ${aws_eks_cluster.my_cluster.name}"
 }
-
 
