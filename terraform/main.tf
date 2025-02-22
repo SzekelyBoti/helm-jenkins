@@ -191,7 +191,6 @@ resource "aws_eks_node_group" "node_group" {
   subnet_ids    = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
   instance_types = ["t3.medium"]
 
-  # FIX: Removed `ami_id`, added correct `ami_type`
   ami_type = "AL2_x86_64"
 
   scaling_config {
