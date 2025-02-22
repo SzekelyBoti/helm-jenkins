@@ -24,7 +24,7 @@ resource "aws_route" "internet_access" {
   gateway_id             = aws_internet_gateway.eks_igw.id
 }
 
-# Public Subnets
+# Public Subnets with Required Tags
 resource "aws_subnet" "eks_subnet_public_a" {
   vpc_id                  = aws_vpc.eks_vpc.id
   cidr_block              = "10.0.1.0/24"
@@ -33,6 +33,7 @@ resource "aws_subnet" "eks_subnet_public_a" {
   tags = {
     "kubernetes.io/cluster/my-cluster" = "shared"
     "kubernetes.io/role/elb"           = "1"
+    "kubernetes.io/role/internal-elb"  = "1"
   }
 }
 
@@ -44,6 +45,7 @@ resource "aws_subnet" "eks_subnet_public_b" {
   tags = {
     "kubernetes.io/cluster/my-cluster" = "shared"
     "kubernetes.io/role/elb"           = "1"
+    "kubernetes.io/role/internal-elb"  = "1"
   }
 }
 
@@ -77,59 +79,23 @@ resource "aws_security_group" "eks_sg" {
   }
 }
 
-resource "aws_security_group" "alb_sg" {
-  name        = "alb-security-group"
-  vpc_id      = aws_vpc.eks_vpc.id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+# Allow External Traffic to Nodes
+resource "aws_security_group_rule" "allow_http_from_anywhere" {
+  type              = "ingress"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  security_group_id = aws_security_group.eks_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
-resource "aws_security_group_rule" "allow_alb_to_nodes" {
-  type                     = "ingress"
-  from_port                = 80
-  to_port                  = 80
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.eks_sg.id
-  source_security_group_id = aws_security_group.alb_sg.id
-}
-
-# IAM Role for EKS Cluster
-resource "aws_iam_role" "eks_role" {
-  name = "eks-cluster-role"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": { "Service": "eks.amazonaws.com" },
-      "Effect": "Allow"
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = aws_iam_role.eks_role.name
+resource "aws_security_group_rule" "allow_https_from_anywhere" {
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  security_group_id = aws_security_group.eks_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 # EKS Cluster
@@ -141,73 +107,20 @@ resource "aws_eks_cluster" "my_cluster" {
   }
 }
 
-# IAM Role for Node Group
-resource "aws_iam_role" "node_role" {
-  name = "eks-node-role"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": { "Service": "ec2.amazonaws.com" },
-      "Effect": "Allow"
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_role_policy_attachment" "eks_worker_node_policy_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  role       = aws_iam_role.node_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cni_policy_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  role       = aws_iam_role.node_role.name
-}
-
-resource "aws_iam_role_policy_attachment" "eks_ecr_read_only_policy_attach" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-  role       = aws_iam_role.node_role.name
-}
-
-# Data source for the latest EKS optimized AMI in eu-west-2
-data "aws_ami" "eks_ami" {
-  most_recent = true
-  owners      = ["602401143452"] # Amazon's EKS AMI owner ID
-
-  filter {
-    name   = "name"
-    values = ["amazon-eks-node-*-al2-x86_64-gp2"]
-  }
-}
-
-# Node Group
+# Node Group (No Custom AMI)
 resource "aws_eks_node_group" "node_group" {
   cluster_name  = aws_eks_cluster.my_cluster.name
   node_role_arn = aws_iam_role.node_role.arn
   subnet_ids    = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
-  instance_types = ["t3.medium"]
 
-  ami_type = "AL2_x86_64"
+  instance_types = ["t3.medium"]
+  ami_type       = "AL2_x86_64"  # AWS will select the correct AMI
 
   scaling_config {
     desired_size = 2
     max_size     = 3
     min_size     = 1
   }
-}
-
-# Allow Nodes to communicate with each other
-resource "aws_security_group_rule" "allow_nodes_to_nodes" {
-  type                     = "ingress"
-  from_port                = 1025
-  to_port                  = 65535
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.eks_sg.id
-  cidr_blocks              = ["10.0.0.0/16"]
 }
 
 # Outputs
