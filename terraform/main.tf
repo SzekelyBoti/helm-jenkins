@@ -176,9 +176,11 @@ resource "aws_iam_role_policy_attachment" "eks_ecr_read_only_policy_attach" {
 # Data source for the latest EKS optimized AMI in eu-west-2
 data "aws_ami" "eks_ami" {
   most_recent = true
-  owners      = ["602401143452"]
-  filters = {
-    name = "amazon-eks-node-*-al2-x86_64-gp2"
+  owners      = ["602401143452"] # Amazon's EKS AMI owner ID
+
+  filter {
+    name   = "name"
+    values = ["amazon-eks-node-*-al2-x86_64-gp2"]
   }
 }
 
@@ -188,8 +190,10 @@ resource "aws_eks_node_group" "node_group" {
   node_role_arn = aws_iam_role.node_role.arn
   subnet_ids    = [aws_subnet.eks_subnet_public_a.id, aws_subnet.eks_subnet_public_b.id]
   instance_types = ["t3.medium"]
-  ami_type       = "CUSTOM"
-  ami_id         = data.aws_ami.eks_ami.id
+
+  # FIX: Removed `ami_id`, added correct `ami_type`
+  ami_type = "AL2_x86_64"
+
   scaling_config {
     desired_size = 2
     max_size     = 3
