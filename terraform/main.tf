@@ -66,10 +66,10 @@ resource "aws_security_group" "eks_sg" {
   vpc_id = aws_vpc.eks_vpc.id
 
   ingress {
-    from_port   = 0
+    from_port   = 1025
     to_port     = 65535
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
   egress {
     from_port   = 0
@@ -97,6 +97,11 @@ resource "aws_iam_role" "eks_role" {
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
   role       = aws_iam_role.eks_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "ecr_readonly_policy_attach" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.node_role.name
 }
 
 # IAM Role for Node Group
